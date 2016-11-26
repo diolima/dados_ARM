@@ -34,6 +34,27 @@ sapply(granularity, function(gran){
 })
 # November appears to be the month with less outliers and less NA values #
 
+# Mean airtemp per hour
+pdf('mean_airtemp.pdf')
+g <- ggplot(m.fulldata[stats=="mean" & measured_var=="airtemp"], aes(hour, value, group=variable)) +
+			stat_summary(fun.ymin=min, fun.ymax=max, geom='ribbon', fill='grey') +
+			stat_summary(fun.y=mean, geom='line') + 
+			ylab('Temperature') +
+			theme_gdocs()
+print(g)
+dev.off()
+
+# Mean rh per hour
+pdf('mean_rh.pdf')
+g <- ggplot(m.fulldata[stats=="mean" & measured_var=="rh"], aes(hour, value, group=variable)) +
+			stat_summary(fun.ymin=min, fun.ymax=max, geom='ribbon', fill='grey') +
+			stat_summary(fun.y=mean, geom='line') + 
+			ylab('Relative Humidity') +
+			theme_gdocs()
+print(g)
+dev.off()
+
+# Time series plot all variables in november
 sapply(granularity[1], function(gran){
 	pdf(paste0(gran, '_nov_summary.pdf'), h=10, w=10)
 	g <- ggplot(m.fulldata[stats=='mean' & month==11], aes(get(gran), value, group=variable)) +
