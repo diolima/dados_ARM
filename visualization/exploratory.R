@@ -35,10 +35,10 @@ sapply(granularity, function(gran){
 # Variables distribuition
 pdf('outliers.pdf', w=10, h=10)
 g <- ggplot(m.fulldata[stats=="mean"], aes(x=variable, y=value, fill=variable)) +
-	             geom_violin() + 
-				 geom_boxplot(width=0.1, alpha=0.65,
-											  fill="white", colour='black',
-											  outlier.color='black', outlier.alpha=0.5) +
+						geom_violin() + 
+						geom_boxplot(width=0.1, alpha=0.65,
+							  fill="white", colour='black',
+							  outlier.color='black', outlier.alpha=0.5) +
 				 facet_wrap(~variable, scales="free") + theme_few()
 print(g)
 dev.off()
