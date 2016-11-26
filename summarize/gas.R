@@ -48,5 +48,14 @@ out_df[is.na(out_df)] <- NA
 out_df[out_df == -Inf] <- NA
 out_df[out_df == Inf] <- NA
 
+# Checking manually
+#    set.seed(42)
+#    mock_df <- out_df[sample(1:nrow(out_df), 3),]
+#    mock_out <- fread("/home/diogenes/work/raw_proj/gases/CO/maomaoscs1.co.01s.00.20151001.000000.m02.tsv", data.table = F, skip = 39, header = F)
+#    colnames(mock_out) <- c('datetime', 'CO', 'N2O', 'H2O') 
+#    mock_out <- subset(mock_out, grepl('2015-10-02 10:', mock_out$datetime))
+#    print(sapply(mock_out[,-1], mean, na.rm = T))
+# Everything checks out
+
 # Writing output
 write.table(out_df, './../data/icos.tsv', quote = F, sep = '\t', row.names = F)
