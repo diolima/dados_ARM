@@ -8,10 +8,10 @@ setnames(fulldata, tolower(colnames(fulldata))) # Lowercase column names
 # Date Formatting
 fulldata[, day_hour := as.POSIXct(strptime(paste(day, hour, sep=" "), "%Y-%m-%d %H"))] 
 fulldata[, day := as.Date(day)]
-fulldata[, month := format.Date(day, "%m")]
+fulldata[, month := as.numeric(format.Date(day, "%m"))]
 
 # data.table reshaping (wide to long)
-m.fulldata <- melt(fulldata[], id=c('day_hour', 'day', 'hour')) # Melts wide data.table
+m.fulldata <- melt(fulldata[], id=c('day_hour', 'day', 'hour', 'month')) # Melts wide data.table
 m.fulldata[, c("measured_var", "stats") := tstrsplit(variable, "_", fixed=T)]
 m.fulldata[is.infinite(value), value := NA]
 
@@ -31,15 +31,30 @@ sapply(granularity, function(gran){
 	print(g)
 	dev.off()
 })
+# December and November appear to be the months with less outliers and less NA values #
+
 
 # Variables distribuition
 pdf('outliers.pdf', w=10, h=10)
 g <- ggplot(m.fulldata[stats=="mean"], aes(x=variable, y=value, fill=variable)) +
 						geom_violin() + 
 						geom_boxplot(width=0.1, alpha=0.65,
-							  fill="white", colour='black',
+							  fill="white", colour="black", 
 							  outlier.color='black', outlier.alpha=0.5) +
-				 facet_wrap(~variable, scales="free") + theme_few()
+						facet_wrap(~variable, scales="free") + theme_few() +
+						theme(axis.text.x=element_blank(), axis.ticks.x=element_blank())
+print(g)
+dev.off()
+
+# You can filter m.fulldata for specific months
+pdf('outliers_months.pdf', w=13, h=10)
+g <- ggplot(m.fulldata[stats=="mean"], aes(x=variable, y=value, fill=as.factor(month))) +
+						geom_violin(position=position_dodge(1)) + 
+						geom_boxplot(width=0.1, alpha=0.65,
+							  colour="white", aes(fill=as.factor(month)), 
+							  outlier.color='black', outlier.alpha=0.5, position=position_dodge(1)) +
+						#scale_fill_manual(values=c('steelblue3', 'springgreen2'), labels = c('Nov', 'Dec'), name='Months') +
+						facet_wrap(~variable, scales="free") + theme_few() + theme(axis.text.x=element_blank())
 print(g)
 dev.off()
 
