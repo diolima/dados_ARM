@@ -1,35 +1,51 @@
-library(ggplot2)
 library(data.table)
-library(splitstackshape)
+library(ggplot2)
+library(ggthemes)
 
 fulldata <- fread("../data/allvariables.tsv") # Fast read data.table
-setnames(fulldata, tolower(colnames(fulldata)))
+setnames(fulldata, tolower(colnames(fulldata))) # Lowercase column names
 
-#fulldata[, hour := paste(hour, ":00:00", sep="")]
-#fulldata[, day_hour := as.POSIXct(paste(day, hour, sep=" "), format="%Y-%d-%m %H:%M:%S")]
-fulldata[, day_hour := paste(day, hour, sep=" ")]
+# Date Formatting
+fulldata[, day_hour := as.POSIXct(strptime(paste(day, hour, sep=" "), "%Y-%m-%d %H"))] 
+fulldata[, day := as.Date(day)]
+fulldata[, month := format.Date(day, "%m")]
 
-m.fulldata <- melt(fulldata, id=c('day_hour', 'day', 'hour')) # Melts wide data.table
-m.fulldata[, correct_hour := as.POSIXct(strptime(day_hour, "%Y-%m-%d %H"))]
-m.fulldata <- cSplit(m.fulldata, "variable", "_")
+# data.table reshaping (wide to long)
+m.fulldata <- melt(fulldata[], id=c('day_hour', 'day', 'hour')) # Melts wide data.table
+m.fulldata[, c("measured_var", "stats") := tstrsplit(variable, "_", fixed=T)]
+m.fulldata[is.infinite(value), value := NA]
 
-# variables distribution
-#violinplot <- ggplot(m.fulldata, aes(x=, y=value, group=variable, color=variable)) +
-#					geom_violin() + facet_wrap(~variable)
+# Exploratory plots by day and month
+granularity <- c('day', 'month')
+sapply(granularity, function(gran){
+	pdf(paste0(gran, '_summary.pdf'), h=10, w=10)
+	g <- ggplot(m.fulldata[stats=='mean'], aes(get(gran), value, group=variable)) +
+				stat_summary(fun.ymax=max, fun.ymin=min, geom='ribbon', aes(fill=variable)) +
+				stat_summary(fun.y=mean, geom='line', color='black') + theme_few() +
+				theme_few() + 
+				facet_grid(variable~., scales="free") + xlab(gran) 
+	if(gran == 'day'){
+		g <- g + scale_x_date(date_breaks='1 month', date_labels = "%b %d") +
+			     theme(axis.text.x=element_text(angle=45, hjust=1))
+	}
+	print(g)
+	dev.off()
+})
 
-# time series profile
-#tsplot <- ggplot(m.fulldata[grep('mean', variable)], aes(x=day_hour, y=value, group=variable, color=variable)) +
-#				stat_summary(fun.y=mean, geom="line") + 
-#				stat_summary(fun.ymax=max, fun.ymin=min, geom="ribbon", fill="grey") +
-#				facet_grid(.~variable) + 
-#				ylab('Value') + xlab('Datetime Hour')
+# Variables distribuition
+pdf('outliers.pdf', w=10, h=10)
+g <- ggplot(m.fulldata[stats=="mean"], aes(x=variable, y=value, fill=variable)) +
+	             geom_violin() + 
+				 geom_boxplot(width=0.1, alpha=0.65,
+											  fill="white", colour='black',
+											  outlier.color='black', outlier.alpha=0.5) +
+				 facet_wrap(~variable, scales="free") + theme_few()
+print(g)
+dev.off()
 
+# Aggregating values by day
+daymean <- m.fulldata[stats=="mean", .(mean=mean(value)), by=c("measured_var", "day")][, mean]
+fulldt_day <- m.fulldata[, .(max=max(value), min=min(value)), by=c('day', 'measured_var')][, mean := daymean]
 
-#pdf('violinplot.pdf')
-#print(violinplot)
-#dev.off()
-
-#pdf('tsplot.pdf')
-#print(tsplot)
-#dev.off()
-
+# filtering date by month
+#m.fulldata[format.Date(day, "%m") == "10"]
