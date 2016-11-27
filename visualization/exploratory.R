@@ -117,8 +117,9 @@ windrose_plot <- function(dt, wspeed, wdir){
 	dt[, speed.bin := cut(get(wspeed), breaks=6, dig.lab=1)]
 	setattr(dt$speed.bin,"levels", gsub('\\((.*),(.*)\\]', '\\1 - \\2', levels(dt$speed.bin)))
 	dt[, dir.bin := cut(get(wdir), breaks=seq(0,360, by=30), dig.lab=2)]
+	palette  <- rev(colorRampPalette(brewer.pal(6,'Blues'))(6))
 	g <- ggplot(dt, aes(dir.bin)) +
-				geom_bar(data=dt, aes(x=dir.bin, fill=speed.bin, y = (..count..)/sum(..count..))) +
+				geom_bar(data=dt, aes(x=dir.bin, fill=factor(speed.bin, levels=rev(levels(speed.bin))), y = (..count..)/sum(..count..))) +
 				coord_polar(start=-(15/360)* 2*pi) + 
 				#ylim(0,0.5)+
 				#scale_y_continuous(limits=c(0,100))+
@@ -127,7 +128,7 @@ windrose_plot <- function(dt, wspeed, wdir){
 													"ESE", "SE","SSE", 
 													"S","SSW", "SW","WSW", "W", 
 													"WNW","NW","NNW")) +	
-				scale_fill_discrete(drop=FALSE, name='Wind Speed')
+				scale_fill_manual(values=palette, drop=FALSE, name='Wind Speed')
 				#scale_x_continuous(breaks=seq(0, 360, by=30), lim=c(0,360))	
 	print(g)
 }
@@ -140,10 +141,12 @@ windrose_gif <- function(dt, wspeed, wdir, by_var='day', filename){
 	setattr(dt$speed.bin,"levels", gsub('\\((.*),(.*)\\]', '\\1 - \\2', levels(dt$speed.bin)))
 	dt[, dir.bin := cut(get(wdir), breaks=seq(0,360, by=30), dig.lab=2)]
 	iterator <- unique(as.character(dt[, get(by_var)]))
+	palette  <- rev(colorRampPalette(brewer.pal(6,'Blues'))(6))
 	saveGIF({
 		for (i in iterator){
 			g <- ggplot(dt, aes(dir.bin)) +
-						geom_bar(data=dt[get(by_var) == i], aes(x=dir.bin, fill=speed.bin, y = (..count..)/sum(..count..))) +
+						geom_bar(data=dt[get(by_var) == i], aes(x=dir.bin, fill=factor(speed.bin, levels=rev(levels(speed.bin))),
+															   	y = (..count..)/sum(..count..))) +
 						coord_polar(start=-(15/360)* 2*pi) + 
 						ylim(0,0.7)+
 						#scale_y_continuous(limits=c(0,100))+
@@ -152,7 +155,7 @@ windrose_gif <- function(dt, wspeed, wdir, by_var='day', filename){
 															"ESE", "SE","SSE", 
 															"S","SSW", "SW","WSW", "W", 
 															"WNW","NW","NNW")) +	
-						scale_fill_discrete(drop=FALSE, name='Wind Speed')+
+						scale_fill_manual(values=palette, drop=FALSE, name='Wind Speed') +
 						ylab('Frequency') + theme_minimal() + ggtitle(paste0('Day ',i)) + xlab('')
 						#scale_x_continuous(breaks=seq(0, 360, by=30), lim=c(0,360))	
 			print(g)
