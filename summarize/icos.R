@@ -4,7 +4,7 @@ library(parallel)
 # All files must be in dir path
 files <- grep('.tsv', dir('~/work/raw_proj/gases/CO', full.name = T), value = T)
 
-reduz_gran <- function(arquivo){
+summarize <- function(arquivo){
   print(arquivo)
   gases <- fread(arquivo, skip = 39, data.table = F, header = F)
   colnames(gases) <- c('datetime', 'CO', 'N2O', 'H2O') 
@@ -29,8 +29,7 @@ reduz_gran <- function(arquivo){
   output
 }
 
-output <- mclapply(files, reduz_gran, mc.cores = 12)
-
+output <- mclapply(files, summarize, mc.cores = 12)
 # Naming months 
 names(output) <- substr(sapply(strsplit(files, '\\.'), '[', 5), 1, 6)
 # Ordering months

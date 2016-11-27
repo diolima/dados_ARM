@@ -33,6 +33,8 @@ summarize <- function(arquivo){
    output
 }
 
+
+
 # Parallel lapply to read and summarize data
 output <- mclapply(files, summarize, mc.cores = 12)
 
@@ -64,3 +66,50 @@ rownames(out_df) <- NULL
 
 write.table(out_df, './../data/vaisala.tsv', quote = F, 
 	    sep = '\t', row.names = F)
+
+# Summarize only wdir
+summarize_wdir <- function(arquivo){
+   nov <- fread(arquivo, skip = 39, data.table = F)
+   colnames(nov) <- c('datetime', 'wspeed', 'wdir', 'airtemp', 'rh', 'baro', 'rain')
+   nov <- nov[,c('datetime', 'wspeed', 'wdir')]
+   nov <- nov[complete.cases(nov),]
+   # Get dates and character to use as factor to aggregate
+   date <- gsub(' .*', '', nov$datetime)
+   split_date <- strsplit(date, '-') 
+   year <- sapply(split_date, '[', 1)
+   month <- sapply(split_date, '[', 2)
+   day <- sapply(split_date, '[', 3) 
+   hour <- gsub(".* (\\d{2}).*", '\\1', nov$datetime)
+   # vector to aggregate  
+   m_d_h <- paste(year, month, day, hour, sep = '_')
+   # Submitting m_d_h to data_frame
+   nov$facdat <- m_d_h
+   split_day <- split(nov, nov$facdat)
+   # Iterate
+   split_pro <- mclapply(split_day, function(day){
+     wt <- day$wspeed/nrow(day)
+     xm <- weighted.mean(day$wdir,wt)      
+     data.frame(facdat = unique(day$facdat), 
+	        wt_mean_wdir = xm,
+		nwt_mean_wdir = mean(day$wdir),
+                sd_wdir = sd(day$wdir),
+	        mean_speed = mean(day$wspeed), 	
+		speed_sd = sd(day$wspeed))
+   }, mc.cores = 3)
+   df_pro <- do.call(rbind, split_pro)
+   rownames(df_pro) <- NULL
+   sum_day <-  gsub('_[0-9]{2}$', '', df_pro[,1])
+   sum_hour <- gsub('.*_', '', df_pro[,1]) 
+   output <- cbind(day = sum_day, hour = sum_hour, df_pro[,-1, drop = F])
+   output
+}
+output2 <- mclapply(files, summarize_wdir, mc.cores = 6)
+
+# Assembling data frame
+winddf <- do.call(rbind, output2)
+winddf$day <- as.Date(winddf$day, format = '%Y_%m_%d')
+row.names(winddf) <- NULL
+
+write.table('./../data/winddata_vaisala.tsv', sep = '\t', quote = F, row.names = F)
+
+
