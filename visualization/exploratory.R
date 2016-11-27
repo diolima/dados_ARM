@@ -120,7 +120,7 @@ windrose_plot <- function(dt, wspeed, wdir){
 	g <- ggplot(dt, aes(dir.bin)) +
 				geom_bar(data=dt, aes(x=dir.bin, fill=speed.bin, y = (..count..)/sum(..count..))) +
 				coord_polar(start=-(15/360)* 2*pi) + 
-				ylim(0,1)+
+				#ylim(0,0.5)+
 				#scale_y_continuous(limits=c(0,100))+
 				scale_x_discrete(drop = FALSE,
 								labels = c("N","NNE","NE","ENE", "E", 
@@ -134,7 +134,7 @@ windrose_plot <- function(dt, wspeed, wdir){
 
 
 
-windrose_gif <- function(dt, wspeed, wdir, by_var='day'){
+windrose_gif <- function(dt, wspeed, wdir, by_var='day', filename){
 	dt <- na.omit(dt[, c(by_var, wspeed, wdir), with=F])
 	dt[, speed.bin := cut(get(wspeed), breaks=6, dig.lab=1)]
 	setattr(dt$speed.bin,"levels", gsub('\\((.*),(.*)\\]', '\\1 - \\2', levels(dt$speed.bin)))
@@ -145,7 +145,7 @@ windrose_gif <- function(dt, wspeed, wdir, by_var='day'){
 			g <- ggplot(dt, aes(dir.bin)) +
 						geom_bar(data=dt[get(by_var) == i], aes(x=dir.bin, fill=speed.bin, y = (..count..)/sum(..count..))) +
 						coord_polar(start=-(15/360)* 2*pi) + 
-						ylim(0,1)+
+						ylim(0,0.7)+
 						#scale_y_continuous(limits=c(0,100))+
 						scale_x_discrete(drop = FALSE,
 										labels = c("N","NNE","NE","ENE", "E", 
@@ -157,7 +157,7 @@ windrose_gif <- function(dt, wspeed, wdir, by_var='day'){
 						#scale_x_continuous(breaks=seq(0, 360, by=30), lim=c(0,360))	
 			print(g)
 		}	
-	}, interval = 0.1, movie.name = "winds.gif", ani.width = 600, ani.height = 600)
+	}, interval = 0.1, movie.name = filename, ani.width = 600, ani.height = 600)
 }
 
 
