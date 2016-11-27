@@ -1,6 +1,8 @@
 library(data.table)
 library(ggplot2)
 library(ggthemes)
+library(scales)
+library(animation)
 
 fulldata <- fread("../data/allvariables.tsv") # Fast read data.table
 setnames(fulldata, tolower(colnames(fulldata))) # Lowercase column names
@@ -108,3 +110,31 @@ fulldt_day <- m.fulldata[, .(max=max(value), min=min(value)), by=c('day', 'measu
 
 # filtering date by month
 #m.fulldata[format.Date(day, "%m") == "10"]
+
+windrose_gif <- function(dt, wspeed, wdir, by_var='day'){
+	dt <- na.omit(dt[, c(by_var, wspeed, wdir), with=F])
+	dt[, speed.bin := cut(get(wspeed), breaks=6, dig.lab=1)]
+	setattr(dt$speed.bin,"levels", gsub('\\((.*),(.*)\\]', '\\1 - \\2', levels(dt$speed.bin)))
+	dt[, dir.bin := cut(get(wdir), breaks=seq(0,360, by=30), dig.lab=2)]
+	iterator <- unique(as.character(dt[, get(by_var)]))
+	saveGIF({
+		for (i in iterator){
+			g <- ggplot(dt[get(by_var) == i], aes(dir.bin, fill=speed.bin)) +
+						geom_bar(aes(y = (..count..)/sum(..count..))) +
+						coord_polar(start=-(15/360)* 2*pi) + 
+						ylim(0,1)+
+						#scale_y_continuous(limits=c(0,100))+
+						scale_x_discrete(drop = FALSE,
+										labels = c("N","NNE","NE","ENE", "E", 
+															"ESE", "SE","SSE", 
+															"S","SSW", "SW","WSW", "W", 
+															"WNW","NW","NNW"))	
+						#scale_x_continuous(breaks=seq(0, 360, by=30), lim=c(0,360))	
+			print(g)
+		}	
+	}, interval = 0.2, movie.name = "winds.gif", ani.width = 600, ani.height = 600)
+}
+
+
+
+
