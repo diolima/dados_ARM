@@ -33,8 +33,6 @@ summarize <- function(arquivo){
    output
 }
 
-
-
 # Parallel lapply to read and summarize data
 output <- mclapply(files, summarize, mc.cores = 12)
 
@@ -52,7 +50,6 @@ out_df <- do.call(rbind, output)
 out_df$day <- as.Date(out_df$day, format = '%Y_%m_%d')
 rownames(out_df) <- NULL
 
-
 # Manual test 
 #    mock_df <- out_df[complete.cases(out_df),]
 #    set.seed(42)
@@ -62,8 +59,8 @@ rownames(out_df) <- NULL
 #    only_selected <- subset(full_df, grepl('^2015-10-03 04:', full_df$datetime))
 #    summary(only_selected)
 ### wdir_mean == 82.42
-### Everything is correct. Saving file and moving on ###
 
+### Everything is correct. Saving file and moving on ###
 write.table(out_df, './../data/vaisala.tsv', quote = F, 
 	    sep = '\t', row.names = F)
 
@@ -110,6 +107,10 @@ winddf <- do.call(rbind, output2)
 winddf$day <- as.Date(winddf$day, format = '%Y_%m_%d')
 row.names(winddf) <- NULL
 
-write.table('./../data/winddata_vaisala.tsv', sep = '\t', quote = F, row.names = F)
+write.table(winddf, './../data/winddata_vaisala.tsv', sep = '\t', quote = F, row.names = F)
 
-
+# Snippet to plot distributions
+# library(ggplot2)
+# pdf('~/corr_p.pdf')
+# print(ggplot(winddf, aes(wt_mean_wdir, nwt_mean_wdir)) + geom_point(aes(colour = sd_wdir)))
+# dev.off()
