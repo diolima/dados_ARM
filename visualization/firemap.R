@@ -3,6 +3,7 @@ library(ggmap)
 library(ggthemes)
 
 firedata <- fread('../data/fire_archive_M6_3376.csv')
+fulldata <- fread('../data/allvariables.tsv')
 firedata <- firedata[confidence >= 70]
 firedata[, c('year', 'month', 'day') := tstrsplit(acq_date, '-')]
 firedata[, month := factor(month.abb[as.numeric(month)], levels=month.abb)]

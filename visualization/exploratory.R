@@ -2,7 +2,27 @@ library(data.table)
 library(ggplot2)
 library(ggthemes)
 library(scales)
+library(RColorBrewer)
 library(animation)
+
+
+value2NA <- function(dtable, condition, substitute){
+	#condition example: '>0', '==1', '<=0', '=="tobias"'
+	for(j in seq_along(dtable)){
+		vectype <- class(dtable[[j]])
+		if (vectype=='integer' || vectype=='numeric' || vectype=='character'){
+			set(dtable,
+			i=which(eval(parse(text=paste0('dtable[[j]]', condition)))),
+			j=j, value=substitute)
+		}
+	}
+}
+
+firedata <- fread('../data/fire_archive_M6_3376.csv') 
+firedata <- firedata[confidence>=70]
+firedata[, c('year', 'month', 'day') := tstrsplit(acq_date, '-')]
+firedata[, month := month.abb[as.numeric(month)]]
+firedata[, acq_date := as.Date(acq_date)]
 
 fulldata <- fread("../data/allvariables.tsv") # Fast read data.table
 setnames(fulldata, tolower(colnames(fulldata))) # Lowercase column names
@@ -10,10 +30,13 @@ setnames(fulldata, tolower(colnames(fulldata))) # Lowercase column names
 ## Data Formatting ##
 fulldata[, day_hour := as.POSIXct(strptime(paste(day, hour, sep=" "), "%Y-%m-%d %H"))] 
 fulldata[, day := as.Date(day)]
+fulldata[, month_day := as.Date(format.Date(day, "%b-%d"), "%b-%d")]
 fulldata[, month := as.numeric(format.Date(day, "%m"))]
 fulldata[, year := as.numeric(format.Date(day, "%Y"))]
+fulldata[, monthname := factor(month.abb[as.numeric(month)], levels=month.abb)]
 
-m.fulldata <- melt(fulldata[], id=c('day_hour', 'day', 'hour', 'month', 'year')) # Melts wide data.table
+
+m.fulldata <- melt(fulldata, id=c('day_hour', 'day', 'hour', 'month', 'year', 'monthname', 'month_day')) # Melts wide data.table
 m.fulldata[, c("measured_var", "stats") := tstrsplit(variable, "_", fixed=T)]
 m.fulldata[is.infinite(value), value := NA]
 
@@ -56,22 +79,6 @@ g <- ggplot(m.fulldata[stats=="mean" & measured_var=="rh"], aes(hour, value, gro
 print(g)
 dev.off()
 
-# Time series plot all variables in november
-sapply(granularity[1], function(gran){
-	pdf(paste0(gran, '_nov_summary.pdf'), h=10, w=10)
-	g <- ggplot(m.fulldata[stats=='mean' & month==11], aes(get(gran), value, group=variable)) +
-				stat_summary(fun.ymax=max, fun.ymin=min, geom='ribbon', aes(fill=variable)) +
-				stat_summary(fun.y=mean, geom='line', color='black') + theme_few() +
-				theme_few() + 
-				facet_grid(variable~year, scales="free") + xlab(gran) 
-	if(gran == 'day'){
-		g <- g + scale_x_date(date_breaks='1 month', date_labels = "%b %d") +
-			     theme(axis.text.x=element_text(angle=45, hjust=1))
-	}
-	print(g)
-	dev.off()
-})
-
 
 # Variables distribuition
 pdf('outliers.pdf', w=10, h=10)
@@ -105,33 +112,70 @@ print(g)
 dev.off()
 
 # Aggregating values by day
-daymean <- m.fulldata[stats=="mean", .(mean=mean(value)), by=c("measured_var", "day")][, mean]
-fulldt_day <- m.fulldata[, .(max=max(value), min=min(value)), by=c('day', 'measured_var')][, mean := daymean]
+#daymean_m.fulldata[stats=="mean", .(mean=mean(value)), by=c("measured_var", "day")][, mean]
+#fulldt_day_m.fulldata[, .(max=max(value), min=min(value)), by=c('day', 'measured_var')][, mean := daymean]
 
 # filtering date by month
 #m.fulldata[format.Date(day, "%m") == "10"]
 
 
-windrose_plot <- function(dt, wspeed, wdir){
-	dt <- na.omit(dt[, c(wspeed, wdir), with=F])
+		
+windrose_plot <- function(dt, wspeed, wdir, facet=''){
+	if (length(facet) == 1){
+		if (facet != ''){
+			dt <- na.omit(dt[, c(wspeed, wdir, facet), with=F])
+		}else{
+			dt <- na.omit(dt[, c(wspeed, wdir), with=F])
+		}
+	}
+	else{
+		dt <- na.omit(dt[, c(wspeed, wdir, facet), with=F])
+	} 
 	dt[, speed.bin := cut(get(wspeed), breaks=6, dig.lab=1)]
 	setattr(dt$speed.bin,"levels", gsub('\\((.*),(.*)\\]', '\\1 - \\2', levels(dt$speed.bin)))
 	dt[, dir.bin := cut(get(wdir), breaks=seq(0,360, by=30), dig.lab=2)]
-	palette  <- rev(colorRampPalette(brewer.pal(6,'Blues'))(6))
+	palette <- rev(colorRampPalette(brewer.pal(6,'Blues'))(6))
 	g <- ggplot(dt, aes(dir.bin)) +
-				geom_bar(data=dt, aes(x=dir.bin, fill=factor(speed.bin, levels=rev(levels(speed.bin))), y = (..count..)/sum(..count..))) +
-				coord_polar(start=-(15/360)* 2*pi) + 
-				#ylim(0,0.5)+
-				#scale_y_continuous(limits=c(0,100))+
-				scale_x_discrete(drop = FALSE,
-								labels = c("N","NNE","NE","ENE", "E", 
-													"ESE", "SE","SSE", 
-													"S","SSW", "SW","WSW", "W", 
-													"WNW","NW","NNW")) +	
-				scale_fill_manual(values=palette, drop=FALSE, name='Wind Speed')
-				#scale_x_continuous(breaks=seq(0, 360, by=30), lim=c(0,360))	
-	print(g)
+			geom_bar(data=dt, aes(x=dir.bin, fill=factor(speed.bin, levels=rev(levels(speed.bin))),
+												   	y = (..count..)/sum(..count..))) +
+			coord_polar(start=-(15/360)* 2*pi) + 
+			#scale_y_continuous(limits=c(0,100))+
+			scale_x_discrete(drop = FALSE,
+							labels = c("N","NNE","NE","ENE", "E", 
+												"ESE", "SE","SSE", 
+												"S","SSW", "SW","WSW", "W", 
+												"WNW","NW","NNW")) +	
+			scale_fill_manual(values=palette, drop=FALSE, name='Wind Speed') +
+			ylab('Frequency') + theme_minimal()  + xlab('')
+	if (length(facet) == 1){
+		if (facet != ''){
+			g <- g + facet_wrap(~get(facet))
+		}
+	}else if (length(facet) == 2){
+		g <- g + facet_grid(get(facet[1])~get(facet[2]))
+	}else{
+		stop('Maximum length of facet is 2')
+	}
+			#scale_x_continuous(breaks=seq(0, 360, by=30), lim=c(0,360))	
+#	g <- ggplot(dt, aes(dir.bin)) +
+#				geom_bar(data=dt, aes(x=dir.bin, fill=factor(speed.bin, levels=rev(levels(speed.bin))), y = (..count..)/sum(..count..))) +
+#				coord_polar(start=-(15/360)* 2*pi) + 
+#				#ylim(0,0.5)+
+#				#scale_y_continuous(limits=c(0,100))+
+#				scale_x_discrete(drop = FALSE,
+#								labels = c("N","NNE","NE","ENE", "E", 
+#													"ESE", "SE","SSE", 
+#													"S","SSW", "SW","WSW", "W", 
+#													"WNW","NW","NNW")) +	
+#				scale_fill_manual(values=palette, drop=FALSE, name='Wind Speed')
+#				#scale_x_continuous(breaks=seq(0, 360, by=30), lim=c(0,360))	
+	return(g)
 }
+
+pdf('winds_months_years.pdf')
+print(windrose_plot(fulldata, 'wspeed_mean', 'wdir_mean', 'monthname') + 
+	  theme(axis.text.x=element_text(size=5)))
+dev.off()
 
 
 
@@ -141,7 +185,7 @@ windrose_gif <- function(dt, wspeed, wdir, by_var='day', filename){
 	setattr(dt$speed.bin,"levels", gsub('\\((.*),(.*)\\]', '\\1 - \\2', levels(dt$speed.bin)))
 	dt[, dir.bin := cut(get(wdir), breaks=seq(0,360, by=30), dig.lab=2)]
 	iterator <- unique(as.character(dt[, get(by_var)]))
-	palette  <- rev(colorRampPalette(brewer.pal(6,'Blues'))(6))
+	palette <- rev(colorRampPalette(brewer.pal(6,'Blues'))(6))
 	saveGIF({
 		for (i in iterator){
 			g <- ggplot(dt, aes(dir.bin)) +
@@ -164,5 +208,18 @@ windrose_gif <- function(dt, wspeed, wdir, by_var='day', filename){
 }
 
 
-
-
+pdf('co_anomaly.pdf')
+g <- ggplot(m.fulldata[measured_var=='co' & stats=='mean'],
+	   aes(month_day, value, group=1)) +
+		stat_summary(fun.ymax=max, fun.ymin=min, geom='ribbon',
+					 aes(fill=variable)) +
+		stat_summary(fun.y='mean', geom='line', color='black') +
+		theme_hc() +
+		facet_grid(year~monthname, scales="free") +
+		theme(axis.text.x=element_blank(), axis.ticks.x=element_blank()) +
+		scale_fill_manual(name='', values="brown1",
+						  labels="Carbon monoxide (CO)") +
+		xlab('') + 
+		ylab('Gas Concentration (ppmv)')
+print(g)
+dev.off()
