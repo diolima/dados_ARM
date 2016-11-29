@@ -139,7 +139,6 @@ windrose_plot <- function(dt, wspeed, wdir, facet=''){
 			geom_bar(data=dt, aes(x=dir.bin, fill=factor(speed.bin, levels=rev(levels(speed.bin))),
 												   	y = (..count..)/sum(..count..))) +
 			coord_polar(start=-(15/360)* 2*pi) + 
-			#scale_y_continuous(limits=c(0,100))+
 			scale_x_discrete(drop = FALSE,
 							labels = c("N","NNE","NE","ENE", "E", 
 												"ESE", "SE","SSE", 
@@ -156,19 +155,6 @@ windrose_plot <- function(dt, wspeed, wdir, facet=''){
 	}else{
 		stop('Maximum length of facet is 2')
 	}
-			#scale_x_continuous(breaks=seq(0, 360, by=30), lim=c(0,360))	
-#	g <- ggplot(dt, aes(dir.bin)) +
-#				geom_bar(data=dt, aes(x=dir.bin, fill=factor(speed.bin, levels=rev(levels(speed.bin))), y = (..count..)/sum(..count..))) +
-#				coord_polar(start=-(15/360)* 2*pi) + 
-#				#ylim(0,0.5)+
-#				#scale_y_continuous(limits=c(0,100))+
-#				scale_x_discrete(drop = FALSE,
-#								labels = c("N","NNE","NE","ENE", "E", 
-#													"ESE", "SE","SSE", 
-#													"S","SSW", "SW","WSW", "W", 
-#													"WNW","NW","NNW")) +	
-#				scale_fill_manual(values=palette, drop=FALSE, name='Wind Speed')
-#				#scale_x_continuous(breaks=seq(0, 360, by=30), lim=c(0,360))	
 	return(g)
 }
 
@@ -193,7 +179,6 @@ windrose_gif <- function(dt, wspeed, wdir, by_var='day', filename){
 															   	y = (..count..)/sum(..count..))) +
 						coord_polar(start=-(15/360)* 2*pi) + 
 						ylim(0,0.7)+
-						#scale_y_continuous(limits=c(0,100))+
 						scale_x_discrete(drop = FALSE,
 										labels = c("N","NNE","NE","ENE", "E", 
 															"ESE", "SE","SSE", 
@@ -201,7 +186,6 @@ windrose_gif <- function(dt, wspeed, wdir, by_var='day', filename){
 															"WNW","NW","NNW")) +	
 						scale_fill_manual(values=palette, drop=FALSE, name='Wind Speed') +
 						ylab('Frequency') + theme_minimal() + ggtitle(paste0('Day ',i)) + xlab('')
-						#scale_x_continuous(breaks=seq(0, 360, by=30), lim=c(0,360))	
 			print(g)
 		}	
 	}, interval = 0.1, movie.name = filename, ani.width = 600, ani.height = 600)
