@@ -4,7 +4,7 @@ library(ggplot2)
 library(ggthemes)
 library(scales)
 library(RColorBrewer)
-#library(animation)
+library(animation)
 
 
 value2NA <- function(dtable, condition, substitute){
