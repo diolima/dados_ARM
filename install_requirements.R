@@ -1,3 +1,4 @@
+# run: Rscript install_requirements.R 
 required <- c('data.table',
 			  'ggplot2',
 			  'GGally',
@@ -7,12 +8,12 @@ required <- c('data.table',
 			  'RColorBrewer',
 			  'animation')
 
-to_install <- required[which(!required %in% installed.packages)]
+to_install <- required[which(!required %in% installed.packages())]
 
 if (length(to_install) == 0){
 	stop('All packages are already installed')
 } else {
 	cat('Installing the following packages:\n')
 	sapply(to_install, function(x) cat(paste0(x, '\n')))
-	install.packages(to_install)
+	install.packages(to_install, repos = 'http://cran.us.r-project.org')
 }
