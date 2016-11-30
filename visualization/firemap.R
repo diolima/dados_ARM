@@ -30,6 +30,9 @@ firepoints <- ggmap(map) +
 
 firepoints_month <- firepoints + facet_wrap(~month)
 firepoints_month_year  <- firepoints + facet_grid(year~month)
+pdf('fireall.pdf')
+print(firepoints)
+dev.off()
 pdf('fire_month.pdf')
 print(firepoints_month)
 dev.off()

@@ -1,9 +1,10 @@
 library(data.table)
+library(GGally)
 library(ggplot2)
 library(ggthemes)
 library(scales)
 library(RColorBrewer)
-library(animation)
+#library(animation)
 
 
 value2NA <- function(dtable, condition, substitute){
@@ -35,21 +36,22 @@ fulldata[, month := as.numeric(format.Date(day, "%m"))]
 fulldata[, year := as.numeric(format.Date(day, "%Y"))]
 fulldata[, monthname := factor(month.abb[as.numeric(month)], levels=month.abb)]
 
+value2NA(fulldata, "==-1", NA)
 
 m.fulldata <- melt(fulldata, id=c('day_hour', 'day', 'hour', 'month', 'year', 'monthname', 'month_day')) # Melts wide data.table
 m.fulldata[, c("measured_var", "stats") := tstrsplit(variable, "_", fixed=T)]
 m.fulldata[is.infinite(value), value := NA]
 
 
-## Exploratory plots by day and month ##
-granularity <- c('day', 'month')
+## Exploratory plots ##
+granularity <- c('day', 'monthname')
 sapply(granularity, function(gran){
 	pdf(paste0(gran, '_summary.pdf'), h=10, w=10)
 	g <- ggplot(m.fulldata[stats=='mean'], aes(get(gran), value, group=variable)) +
 				stat_summary(fun.ymax=max, fun.ymin=min, geom='ribbon', aes(fill=variable)) +
 				stat_summary(fun.y=mean, geom='line', color='black') + theme_few() +
 				theme_few() + 
-				facet_grid(variable~., scales="free") + xlab(gran) 
+				facet_grid(variable~year, scales="free") + xlab(gran) 
 	if(gran == 'day'){
 		g <- g + scale_x_date(date_breaks='1 month', date_labels = "%b %d") +
 			     theme(axis.text.x=element_text(angle=45, hjust=1))
@@ -57,28 +59,16 @@ sapply(granularity, function(gran){
 	print(g)
 	dev.off()
 })
-# November appears to be the month with less outliers and less NA values #
 
-# Mean airtemp per hour
-pdf('mean_airtemp.pdf')
-g <- ggplot(m.fulldata[stats=="mean" & measured_var=="airtemp"], aes(hour, value, group=variable)) +
-			stat_summary(fun.ymin=min, fun.ymax=max, geom='ribbon', fill='grey') +
+pdf('mean_airtemp_rh.pdf', h=5, w=12)
+	g <- ggplot(m.fulldata[stats=="mean" & (measured_var=="airtemp" | measured_var=="rh")], aes(hour, value, group=measured_var)) +
+			stat_summary(fun.ymin=min, fun.ymax=max, geom='ribbon', aes(fill=measured_var)) +
 			stat_summary(fun.y=mean, geom='line') + 
-			ylab('Temperature') +
-			theme_gdocs()
+			ylab('Value') + xlab('Hour of the Day') + 
+			facet_grid(measured_var~., scales='free') + scale_fill_manual(name='', values=c('#d87070', '#6d9df2')) +  
+			theme_gdocs() + theme(legend.position='none')
 print(g)
 dev.off()
-
-# Mean rh per hour
-pdf('mean_rh.pdf')
-g <- ggplot(m.fulldata[stats=="mean" & measured_var=="rh"], aes(hour, value, group=variable)) +
-			stat_summary(fun.ymin=min, fun.ymax=max, geom='ribbon', fill='grey') +
-			stat_summary(fun.y=mean, geom='line') + 
-			ylab('Relative Humidity') +
-			theme_gdocs()
-print(g)
-dev.off()
-
 
 # Variables distribuition
 pdf('outliers.pdf', w=10, h=10)
@@ -86,7 +76,7 @@ g <- ggplot(m.fulldata[stats=="mean"], aes(x=variable, y=value, fill=variable)) 
 						geom_violin() + 
 						geom_boxplot(width=0.1, alpha=0.65,
 							  fill="white", colour="black", 
-							  outlier.color='black', outlier.alpha=0.5) +
+							  outlier.color='black') +
 						facet_wrap(~variable, scales="free") + theme_few() +
 						theme(axis.text.x=element_blank(), axis.ticks.x=element_blank())
 print(g)
@@ -94,11 +84,11 @@ dev.off()
 
 # You can filter m.fulldata for specific months
 pdf('outliers_months.pdf', w=13, h=10)
-g <- ggplot(m.fulldata[stats=="mean"], aes(x=variable, y=value, fill=as.factor(month))) +
+g <- ggplot(m.fulldata[stats=="mean"], aes(x=variable, y=value, fill=monthname)) +
 						geom_violin(position=position_dodge(1)) + 
 						geom_boxplot(width=0.1, alpha=0.65,
-							  colour="white", aes(fill=as.factor(month)), 
-							  outlier.color='black', outlier.alpha=0.5, position=position_dodge(1)) +
+							  colour="white", aes(fill=monthname), 
+							  outlier.color='black',  position=position_dodge(1)) +
 						#scale_fill_manual(values=c('steelblue3', 'springgreen2'), labels = c('Nov', 'Dec'), name='Months') +
 						facet_wrap(~variable, scales="free") + theme_few() + theme(axis.text.x=element_blank())
 print(g)
@@ -110,14 +100,6 @@ g <- ggpairs(fulldata[, grep('mean', colnames(fulldata)), with=F],
 		theme_few()
 print(g)
 dev.off()
-
-# Aggregating values by day
-#daymean_m.fulldata[stats=="mean", .(mean=mean(value)), by=c("measured_var", "day")][, mean]
-#fulldt_day_m.fulldata[, .(max=max(value), min=min(value)), by=c('day', 'measured_var')][, mean := daymean]
-
-# filtering date by month
-#m.fulldata[format.Date(day, "%m") == "10"]
-
 
 		
 windrose_plot <- function(dt, wspeed, wdir, facet=''){
@@ -201,7 +183,7 @@ g <- ggplot(m.fulldata[measured_var=='co' & stats=='mean'],
 		theme_hc() +
 		facet_grid(year~monthname, scales="free") +
 		theme(axis.text.x=element_blank(), axis.ticks.x=element_blank()) +
-		scale_fill_manual(name='', values="brown1",
+		scale_fill_manual(name='', values="steelblue3",
 						  labels="Carbon monoxide (CO)") +
 		xlab('') + 
 		ylab('Gas Concentration (ppmv)')
